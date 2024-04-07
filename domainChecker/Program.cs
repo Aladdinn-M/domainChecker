@@ -1,9 +1,12 @@
 ﻿using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium;
-using System;
-using System.Diagnostics;
-using System.IO;
-using System.Reflection;
+using System.Web;
+using System.Net.Http;
+using TwoCaptcha.Captcha;
+using _2CaptchaAPI;
+using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
+
 
 namespace DomainChecker
 {
@@ -13,21 +16,94 @@ namespace DomainChecker
         {
            // try 
            // {
+                //create domains file .txt if not exists
                 CreateFileIfNotExists(filePath("domains.txt"));
+
+                //open browser 
                 IWebDriver driver = InitializeWebDriver();
-                for (int i = 0 ; i<100 ; i++ )
+                
+                //start extracting domains file by index
+                for ( int i = 0 ; i < 5 ; i ++ )
                 {
                     String domain = extractfile(i, filePath("domains.txt"), driver);
                     IWebElement searchBar = driver.FindElement(By.Id("searchBox"));
                     searchBar.SendKeys(domain);
-                    string value = driver.FindElement(By.Id("recaptcha-token")).GetAttribute("value");
-                    Console.WriteLine(value);
+
+
+                    // Find the iframe element
+                    IWebElement iframe = driver.FindElement(By.TagName("iframe"));
+
+                    // Get the value of the src attribute
+                    string src = iframe.GetAttribute("src");
+
+                    // Parse the URL
+                    Uri uri = new Uri(src);
+
+                    // Extract the value of the k parameter from the URL
+                    string kValue = HttpUtility.ParseQueryString(uri.Query).Get("k");
+
+                    // get url 
+                    string currentUrl = driver.Url;
+
+
+
+                    // Solve the CAPTCHA
+                    Console.WriteLine("Solving CAPTCHA");
+                    var service = new _2CaptchaAPI._2Captcha("1848330245f983448d083bea580f329f");
+                    var response = service.SolveReCaptchaV2(kValue, currentUrl).Result;
+                    string code = response.Response;
+                    Console.WriteLine($"Successfully solved the CAPTCHA. The solve code is {code}");
+                    // Set the solved CAPTCHA
+                    IJavaScriptExecutor js = (IJavaScriptExecutor)driver;
+                    IWebElement recaptchaResponseElement = driver.FindElement(By.Id("g-recaptcha-response-1"));
+                    js.ExecuteScript("arguments[0].removeAttribute('style');", recaptchaResponseElement);
+                    js.ExecuteScript($"arguments[0].value = '{code}';", recaptchaResponseElement);
+
+     
+                    //Submit the form
+                    IWebElement submitBtn = driver.FindElement(By.XPath("//button[contains(@onclick, 'search()')]"));
+
+                    submitBtn.Click();
+
+
+
+
+
+                
+
+                    // Find the div element with id "threatScore"
+                    IWebElement threatScoreDiv = driver.FindElement(By.Id("threatScore"));
+
+                    // Get the text content of the div element
+                    string threatScoreText = threatScoreDiv.Text;
+
+                    // Extract numeric value using regular expression
+                    Match match = Regex.Match(threatScoreText, @"\d+");
+                    int threatScoreValue = 0;
+                    if (match.Success)
+                    {
+                        threatScoreValue = int.Parse(match.Value);
+                    }
+
+                    // Check if the threat score is up to 80
+                    if (threatScoreValue <= 80)
+                    {
+                        Console.WriteLine($"The threat score is  {threatScoreValue}.");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"The threat score ({threatScoreValue}) is higher than 80.");
+                    }
+
+
 
                     driver.Navigate().Refresh();
+                
+                
                 }
 
 
-         //   }
+        //   }
        //     catch (Exception) { }
             
 
