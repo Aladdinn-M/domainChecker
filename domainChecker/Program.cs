@@ -14,18 +14,49 @@ namespace DomainChecker
     {
         static void Main(string[] args)
         {
-           // try 
-           // {
+            try 
+            {
+                string domainsFile = filePath("domains.txt");
                 //create domains file .txt if not exists
-                CreateFileIfNotExists(filePath("domains.txt"));
+                CreateFileIfNotExists(domainsFile);
+                CreateFileIfNotExists(filePath("higherDomains.txt"));
+                CreateFileIfNotExists(filePath("lowerDomains.txt"));
+
+               
+                Console.WriteLine("Enter the minimum score: ");
+                int scoreBase;
+
+                // Prompt the user until a valid number between 1 and 100 is entered
+                while (true)
+                {
+                    if (int.TryParse(Console.ReadLine(), out scoreBase))
+                    {
+                        if (scoreBase >= 1 && scoreBase <= 100)
+                        {
+                            // Valid number entered
+                            break;
+                        }
+                        else
+                        {
+                            Console.WriteLine("Please enter a number between 1 and 100.");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("Invalid input. Please enter a valid number.");
+                    }
+                }
+
+                // Use scoreBase variable for further processing
+                Console.WriteLine($"The minimum score entered is: {scoreBase}");
 
                 //open browser 
                 IWebDriver driver = InitializeWebDriver();
-                
+                int i = 0;
                 //start extracting domains file by index
-                for ( int i = 0 ; i < 5 ; i ++ )
+                do
                 {
-                    String domain = extractfile(i, filePath("domains.txt"), driver);
+                    String domain = extractfile(i, domainsFile, driver);
                     IWebElement searchBar = driver.FindElement(By.Id("searchBox"));
                     searchBar.SendKeys(domain);
 
@@ -48,66 +79,91 @@ namespace DomainChecker
 
 
                     // Solve the CAPTCHA
-                    Console.WriteLine("Solving CAPTCHA");
+                    Console.WriteLine("Solving CAPTCHA........");
                     var service = new _2CaptchaAPI._2Captcha("1848330245f983448d083bea580f329f");
                     var response = service.SolveReCaptchaV2(kValue, currentUrl).Result;
                     string code = response.Response;
-                    Console.WriteLine($"Successfully solved the CAPTCHA. The solve code is {code}");
+                    Console.WriteLine($"Successfully solved the CAPTCHA");
                     // Set the solved CAPTCHA
                     IJavaScriptExecutor js = (IJavaScriptExecutor)driver;
                     IWebElement recaptchaResponseElement = driver.FindElement(By.Id("g-recaptcha-response-1"));
                     js.ExecuteScript("arguments[0].removeAttribute('style');", recaptchaResponseElement);
                     js.ExecuteScript($"arguments[0].value = '{code}';", recaptchaResponseElement);
 
-     
                     //Submit the form
                     IWebElement submitBtn = driver.FindElement(By.XPath("//button[contains(@onclick, 'search()')]"));
-
                     submitBtn.Click();
 
 
-
-
-
-                
-
-                    // Find the div element with id "threatScore"
-                    IWebElement threatScoreDiv = driver.FindElement(By.Id("threatScore"));
+                    // Find the div element with id "domainScore"
+                    IWebElement domainScoreDiv = driver.FindElement(By.Id("threatScore"));
 
                     // Get the text content of the div element
-                    string threatScoreText = threatScoreDiv.Text;
+                    string domainScoreText = domainScoreDiv.Text;
 
                     // Extract numeric value using regular expression
-                    Match match = Regex.Match(threatScoreText, @"\d+");
-                    int threatScoreValue = 0;
+                    Match match = Regex.Match(domainScoreText, @"\d+");
+                    int ScoreValue = 0;
+
                     if (match.Success)
                     {
-                        threatScoreValue = int.Parse(match.Value);
+                        ScoreValue = int.Parse(match.Value);
                     }
 
                     // Check if the threat score is up to 80
-                    if (threatScoreValue <= 80)
+                    if (ScoreValue < 80)
                     {
-                        Console.WriteLine($"The threat score is  {threatScoreValue}.");
+                        Console.WriteLine($"The threat score is ({ScoreValue})");
+                        SaveDomainToFile(domain, filePath("lowerDomains.txt"));
                     }
                     else
                     {
-                        Console.WriteLine($"The threat score ({threatScoreValue}) is higher than 80.");
+                        Console.WriteLine($"The threat score is ({ScoreValue})");
+                        SaveDomainToFile(domain, filePath("higherDomains.txt"));
                     }
 
-
-
                     driver.Navigate().Refresh();
-                
-                
-                }
+                    i++;
+                }while (File.ReadAllLines(domainsFile).Length>i);
 
+                driver.Close();
+                driver.Quit();
+                driver = null;
+            }
+            catch (Exception) { }
 
-        //   }
-       //     catch (Exception) { }
             
 
+
+            Console.WriteLine("===============");
+            Console.WriteLine("process ends !");
+            Console.WriteLine("===============");
+
+            Console.ReadKey();
+
         }
+
+        static void SaveDomainToFile(string domain, string filePath)
+        {
+            try
+            {
+                // Append the domain to the file (create the file if it doesn't exist)
+                using (StreamWriter writer = File.AppendText(filePath))
+                {
+                    // Write the domain to the file
+                    writer.WriteLine(domain);
+                }
+
+                Console.WriteLine($"Domain '{domain}' saved to the file.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred while saving domain '{domain}' to file '{filePath}': {ex.Message}");
+            }
+        }
+
+
+
         private static string extractfile(int index, string filePath, IWebDriver driver)
         {
             string result = null;
@@ -188,12 +244,5 @@ namespace DomainChecker
             }
         }
 
-
-
-
-
-        
-
-  
     }
 }
