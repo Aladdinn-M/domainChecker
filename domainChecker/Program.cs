@@ -6,6 +6,8 @@ using TwoCaptcha.Captcha;
 using _2CaptchaAPI;
 using System.Text.RegularExpressions;
 using System.Text.RegularExpressions;
+using System.Diagnostics;
+
 
 
 namespace DomainChecker
@@ -22,6 +24,17 @@ namespace DomainChecker
                 CreateFileIfNotExists(filePath("higherDomains.txt"));
                 CreateFileIfNotExists(filePath("lowerDomains.txt"));
 
+
+                OpenTextFile("domains.txt");
+               
+
+
+
+
+
+
+                Console.WriteLine("Entre your 2Captcha API: ");
+                string myAPI = Console.ReadLine();
                
                 Console.WriteLine("Enter the minimum score: ");
                 int scoreBase;
@@ -80,7 +93,7 @@ namespace DomainChecker
 
                     // Solve the CAPTCHA
                     Console.WriteLine("Solving CAPTCHA........");
-                    var service = new _2CaptchaAPI._2Captcha("1848330245f983448d083bea580f329f");
+                    var service = new _2CaptchaAPI._2Captcha(myAPI);
                     var response = service.SolveReCaptchaV2(kValue, currentUrl).Result;
                     string code = response.Response;
                     Console.WriteLine($"Successfully solved the CAPTCHA");
@@ -134,7 +147,8 @@ namespace DomainChecker
 
             
 
-
+            OpenTextFile("higherDomains.txt");
+            
             Console.WriteLine("===============");
             Console.WriteLine("process ends !");
             Console.WriteLine("===============");
@@ -142,6 +156,19 @@ namespace DomainChecker
             Console.ReadKey();
 
         }
+
+        static void OpenTextFile(string filePath)
+        {
+            try
+            {
+                Process.Start("cmd", $"/c start {filePath}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred while opening the text file: {ex.Message}");
+            }
+        }
+
 
         static void SaveDomainToFile(string domain, string filePath)
         {
