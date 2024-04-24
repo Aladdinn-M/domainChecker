@@ -1,12 +1,12 @@
-﻿using OpenQA.Selenium.Chrome;
+﻿//using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium;
 using System.Web;
 using System.Net.Http;
-using TwoCaptcha.Captcha;
+using TwoCaptcha;
 using _2CaptchaAPI;
 using System.Text.RegularExpressions;
-using System.Text.RegularExpressions;
 using System.Diagnostics;
+using OpenQA.Selenium.Chrome;
 
 
 
@@ -16,7 +16,7 @@ namespace DomainChecker
     {
         static void Main(string[] args)
         {
-            try 
+            try
             {
                 string domainsFile = filePath("domains.txt");
                 //create domains file .txt if not exists
@@ -26,17 +26,29 @@ namespace DomainChecker
 
 
                 OpenTextFile("domains.txt");
-               
 
 
-
-
-
-
-                Console.WriteLine("Entre your 2Captcha API: ");
+                Console.WriteLine(" Entre your 2Captcha API: ");
                 string myAPI = Console.ReadLine();
-               
-                Console.WriteLine("Enter the minimum score: ");
+
+                Console.WriteLine("\n \n 1:High popularity \n 2:Medium popularity \n\n Enter your choice : (1 or 2)");
+                int popularityChoice = int.Parse(Console.ReadLine());
+                string popularity_Choice = null;
+
+
+                switch (popularityChoice)
+                {
+                    case 1: popularity_Choice = "High popularity"; break;
+                    case 2: popularity_Choice = "Medium popularity"; break;
+
+
+                    default:
+                        Console.WriteLine("invalid input"); break;
+                }
+
+
+
+                Console.WriteLine(" Enter the minimum score: ");
                 int scoreBase;
 
                 // Prompt the user until a valid number between 1 and 100 is entered
@@ -108,6 +120,11 @@ namespace DomainChecker
                     submitBtn.Click();
 
 
+                    IWebElement popularityValue = driver.FindElement(By.Id("impactValues"));
+                    string popularity = popularityValue.GetAttribute("value");
+
+
+
                     // Find the div element with id "domainScore"
                     IWebElement domainScoreDiv = driver.FindElement(By.Id("threatScore"));
 
@@ -123,21 +140,11 @@ namespace DomainChecker
                         ScoreValue = int.Parse(match.Value);
                     }
 
-                    // Check if the threat score is up to 80
-                    if (ScoreValue < 80)
-                    {
-                        Console.WriteLine($"The threat score is ({ScoreValue})");
-                        SaveDomainToFile(domain, filePath("lowerDomains.txt"));
-                    }
-                    else
-                    {
-                        Console.WriteLine($"The threat score is ({ScoreValue})");
-                        SaveDomainToFile(domain, filePath("higherDomains.txt"));
-                    }
+                    validDomain(domain, ScoreValue, scoreBase, popularity, popularity_Choice);
 
                     driver.Navigate().Refresh();
                     i++;
-                }while (File.ReadAllLines(domainsFile).Length>i);
+                } while (File.ReadAllLines(domainsFile).Length > i);
 
                 driver.Close();
                 driver.Quit();
@@ -145,10 +152,10 @@ namespace DomainChecker
             }
             catch (Exception) { }
 
-            
+
 
             OpenTextFile("higherDomains.txt");
-            
+
             Console.WriteLine("===============");
             Console.WriteLine("process ends !");
             Console.WriteLine("===============");
@@ -156,6 +163,32 @@ namespace DomainChecker
             Console.ReadKey();
 
         }
+
+
+        static void validDomain(string domain, int ScoreValue, int scoreBase, string popularity, string popularity_Choice)
+        {
+            // Check if the threat score is up to 80
+            if (ScoreValue >= scoreBase && HasPopularity(popularity, popularity_Choice))
+            {
+                Console.WriteLine($"The domain  score is ({ScoreValue}) and {popularity_Choice}");
+                SaveDomainToFile(domain, filePath("higherDomains.txt"));
+            }
+            else
+            {
+                Console.WriteLine($"The domain  score is ({ScoreValue})");
+                SaveDomainToFile(domain, filePath("lowerDomains.txt"));
+            }
+        }
+
+
+        static bool HasPopularity(string popularity, string popularity_Choice)
+        {
+            // Define regular expressions to match "High popularity" and "Medium popularity"
+            Regex Regex = new Regex($@"\b{Regex.Escape(popularity_Choice)}\b");
+            // Check if the input string contains either pattern
+            return Regex.IsMatch(popularity);
+        }
+
 
         static void OpenTextFile(string filePath)
         {
@@ -239,7 +272,7 @@ namespace DomainChecker
 
             // file
             string filePath = Path.Combine(currentDirectory, filename);
-            
+
 
 
             return filePath;
